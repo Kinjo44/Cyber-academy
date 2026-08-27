@@ -134,6 +134,15 @@
     }
     .modal.visible { display: grid; }
 
+    #fireworks {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 20;
+    }
+
     .dialog {
       width: min(680px, 100%);
       padding: 26px;
@@ -215,6 +224,8 @@
     </div>
   </section>
 
+  <canvas id="fireworks" aria-hidden="true"></canvas>
+
   <script>
     const QUESTIONS = [
       { domain: 'IAM', q: 'Quel principe limite les droits utilisateurs au strict nécessaire ?', a: ['Tout le monde administrateur pour fluidifier le support.', 'Accès large, revu une fois par an.', 'Principe du moindre privilège avec revues régulières.'], correct: 2 },
@@ -254,10 +265,13 @@
 
     const canvas = document.getElementById('board');
     const ctx = canvas.getContext('2d');
+    const fireworksCanvas = document.getElementById('fireworks');
+    const fireworksCtx = fireworksCanvas.getContext('2d');
     const size = 20;
     const cells = canvas.width / size;
     const maxQuestions = 10;
     const state = { snake: [], direction: { x: 1, y: 0 }, nextDirection: { x: 1, y: 0 }, food: null, running: false, paused: false, selected: [], current: 0, score: 0, interval: null };
+    const fireworks = { particles: [], animation: null };
 
     const $ = (id) => document.getElementById(id);
     const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
@@ -361,6 +375,7 @@
       if (index === question.correct) {
         state.score++;
         $('feedback').textContent = 'Bonne réponse ! Reprise du serpent...';
+        launchFireworks();
       } else {
         selectedButton.classList.add('wrong');
         $('feedback').textContent = 'Réponse incorrecte. La bonne réponse est mise en évidence.';
@@ -401,6 +416,75 @@
       state.nextDirection = { x, y };
     }
 
+    function resizeFireworksCanvas() {
+      fireworksCanvas.width = window.innerWidth * window.devicePixelRatio;
+      fireworksCanvas.height = window.innerHeight * window.devicePixelRatio;
+      fireworksCanvas.style.width = `${window.innerWidth}px`;
+      fireworksCanvas.style.height = `${window.innerHeight}px`;
+      fireworksCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    }
+
+    function launchFireworks() {
+      const answerBox = $('answers').getBoundingClientRect();
+      const origins = [
+        { x: answerBox.left + answerBox.width * 0.24, y: answerBox.top + answerBox.height * 0.5 },
+        { x: answerBox.left + answerBox.width * 0.50, y: answerBox.top + answerBox.height * 0.4 },
+        { x: answerBox.left + answerBox.width * 0.76, y: answerBox.top + answerBox.height * 0.5 }
+      ];
+      origins.forEach((origin, burstIndex) => createBurst(origin.x, origin.y, burstIndex));
+      if (!fireworks.animation) animateFireworks();
+    }
+
+    function createBurst(x, y, burstIndex) {
+      const colors = ['#38f2af', '#55b8ff', '#ffd166', '#ff7ad9', '#ffffff'];
+      for (let i = 0; i < 42; i++) {
+        const angle = (Math.PI * 2 * i) / 42 + Math.random() * 0.18;
+        const speed = 2.2 + Math.random() * 4.8 + burstIndex * 0.35;
+        fireworks.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: 2 + Math.random() * 3,
+          alpha: 1,
+          life: 54 + Math.random() * 18,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        });
+      }
+    }
+
+    function animateFireworks() {
+      fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      fireworks.particles = fireworks.particles.filter((particle) => particle.life > 0 && particle.alpha > 0.02);
+
+      fireworks.particles.forEach((particle) => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.06;
+        particle.vx *= 0.985;
+        particle.vy *= 0.985;
+        particle.life--;
+        particle.alpha = particle.life / 72;
+
+        fireworksCtx.save();
+        fireworksCtx.globalAlpha = Math.max(particle.alpha, 0);
+        fireworksCtx.fillStyle = particle.color;
+        fireworksCtx.shadowBlur = 18;
+        fireworksCtx.shadowColor = particle.color;
+        fireworksCtx.beginPath();
+        fireworksCtx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        fireworksCtx.fill();
+        fireworksCtx.restore();
+      });
+
+      if (fireworks.particles.length) {
+        fireworks.animation = requestAnimationFrame(animateFireworks);
+      } else {
+        fireworks.animation = null;
+        fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+    }
+
     document.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
       if (['arrowup', 'z', 'w'].includes(key)) changeDirection(0, -1);
@@ -413,6 +497,9 @@
     $('start').addEventListener('click', startGame);
     $('restart').addEventListener('click', resetGame);
     $('play-again').addEventListener('click', () => { $('result-modal').classList.remove('visible'); resetGame(); startGame(); });
+    window.addEventListener('resize', resizeFireworksCanvas);
+
+    resizeFireworksCanvas();
 
     resetGame();
   </script>
