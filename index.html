@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cyber Academy — Snake Challenge</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #0d1f36;
+      --panel-2: #102a48;
+      --accent: #38f2af;
+      --accent-2: #55b8ff;
+      --danger: #ff5c7a;
+      --warning: #ffd166;
+      --text: #edf7ff;
+      --muted: #9bb4ca;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 16%, rgba(85, 184, 255, .22), transparent 28rem),
+        radial-gradient(circle at 82% 78%, rgba(56, 242, 175, .18), transparent 25rem),
+        linear-gradient(135deg, #040913 0%, var(--bg) 58%, #071b2f 100%);
+      padding: 24px;
+    }
+
+    .app {
+      width: min(1120px, 100%);
+      display: grid;
+      grid-template-columns: minmax(320px, 720px) minmax(280px, 360px);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .game-card, .side-card {
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(16, 42, 72, .92), rgba(7, 17, 31, .92));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 22px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, .09);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    h1, h2, p { margin: 0; }
+
+    h1 { font-size: clamp(1.35rem, 3vw, 2.2rem); letter-spacing: -.04em; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+
+    .badge {
+      padding: 10px 14px;
+      border: 1px solid rgba(56, 242, 175, .45);
+      border-radius: 999px;
+      background: rgba(56, 242, 175, .12);
+      color: var(--accent);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .board-wrap { padding: 20px; }
+
+    canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+      border-radius: 22px;
+      background: #050c16;
+      border: 1px solid rgba(255, 255, 255, .12);
+      box-shadow: inset 0 0 0 1px rgba(56, 242, 175, .06);
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 20px 20px;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .stat span { color: var(--muted); display: block; font-size: .78rem; }
+    .stat strong { display: block; margin-top: 4px; font-size: 1.15rem; }
+
+    .side-card { padding: 24px; }
+    .side-card h2 { font-size: 1.25rem; margin-bottom: 12px; }
+    .side-card p, li { color: var(--muted); line-height: 1.55; }
+    .side-card ul { padding-left: 20px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      cursor: pointer;
+      padding: 12px 16px;
+      font-weight: 800;
+      color: #04111d;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 28px rgba(56, 242, 175, .16);
+    }
+    button.secondary { background: rgba(255, 255, 255, .10); color: var(--text); box-shadow: none; border: 1px solid rgba(255, 255, 255, .10); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 7, 14, .76);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    .modal.visible { display: grid; }
+
+    #fireworks {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .dialog {
+      width: min(680px, 100%);
+      padding: 26px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, #112b49, #091828);
+      border: 1px solid rgba(255, 255, 255, .14);
+      box-shadow: var(--shadow);
+    }
+
+    .pill { color: var(--warning); font-weight: 900; text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
+    .question { margin: 12px 0 18px; font-size: clamp(1.25rem, 3vw, 1.65rem); line-height: 1.25; }
+    .answers { display: grid; gap: 10px; }
+    .answer { text-align: left; color: var(--text); background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .10); box-shadow: none; }
+    .answer.correct { outline: 2px solid var(--accent); }
+    .answer.wrong { outline: 2px solid var(--danger); }
+    .feedback { min-height: 28px; margin-top: 14px; color: var(--muted); }
+
+    .result-title { font-size: clamp(1.6rem, 5vw, 2.8rem); margin: 10px 0; }
+    .validated { color: var(--accent); }
+    .not-validated { color: var(--warning); }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .hud { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="game-card" aria-label="Jeu du serpent Cyber Academy">
+      <header>
+        <div>
+          <h1>Snake Challenge Cyber</h1>
+          <p class="subtitle">Mangez 10 briques, répondez aux questions, validez les compétences.</p>
+        </div>
+        <div class="badge" id="status">Prêt</div>
+      </header>
+      <div class="board-wrap">
+        <canvas id="board" width="600" height="600" aria-label="Plateau de jeu" role="img"></canvas>
+      </div>
+      <div class="hud" aria-live="polite">
+        <div class="stat"><span>Briques</span><strong id="eaten">0/10</strong></div>
+        <div class="stat"><span>Score quiz</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Question</span><strong id="question-count">0/10</strong></div>
+        <div class="stat"><span>Domaine</span><strong id="domain">—</strong></div>
+      </div>
+    </section>
+
+    <aside class="side-card">
+      <h2>Règles</h2>
+      <p>Le jeu tire au hasard 10 questions parmi une banque de 30 couvrant l’IAM, la GRC, le SOC et la sécurité de l’IA.</p>
+      <ul>
+        <li>Flèches ou ZQSD/WASD pour diriger le serpent.</li>
+        <li>Chaque brique déclenche une pause et une question à 3 choix.</li>
+        <li>Au-delà de 8/10, le parcours affiche « Compétences validées ».</li>
+      </ul>
+      <div class="actions">
+        <button id="start">Démarrer</button>
+        <button class="secondary" id="restart">Recommencer</button>
+      </div>
+    </aside>
+  </main>
+
+  <section class="modal" id="quiz-modal" aria-modal="true" role="dialog" aria-labelledby="question-text">
+    <div class="dialog">
+      <div class="pill" id="question-domain">Question</div>
+      <h2 class="question" id="question-text"></h2>
+      <div class="answers" id="answers"></div>
+      <p class="feedback" id="feedback"></p>
+    </div>
+  </section>
+
+  <section class="modal" id="result-modal" aria-modal="true" role="dialog" aria-labelledby="result-title">
+    <div class="dialog">
+      <div class="pill">Fin du challenge</div>
+      <h2 class="result-title" id="result-title"></h2>
+      <p id="result-detail"></p>
+      <div class="actions"><button id="play-again">Rejouer</button></div>
+    </div>
+  </section>
+
+  <canvas id="fireworks" aria-hidden="true"></canvas>
+
+  <script>
+    const QUESTIONS = [
+      { domain: 'IAM', q: 'Quel principe limite les droits utilisateurs au strict nécessaire ?', a: ['Tout le monde administrateur pour fluidifier le support.', 'Accès large, revu une fois par an.', 'Principe du moindre privilège avec revues régulières.'], correct: 2 },
+      { domain: 'IAM', q: 'À quoi sert principalement le MFA ?', a: ['Remplacer totalement les mots de passe faibles.', 'Ajouter un facteur qui réduit le risque si un secret fuit.', 'Garantir que plus aucune attaque phishing n’est possible.'], correct: 1 },
+      { domain: 'IAM', q: 'Quelle pratique est adaptée pour un compte à privilèges ?', a: ['Le partager dans l’équipe pour gagner du temps.', 'L’utiliser au quotidien mais avec un mot de passe long.', 'Le gérer via PAM, traçabilité et élévation temporaire.'], correct: 2 },
+      { domain: 'IAM', q: 'Que vérifie une revue d’accès ?', a: ['La couleur du badge physique.', 'Que les habilitations restent cohérentes avec les rôles.', 'Uniquement la vitesse de connexion au portail.'], correct: 1 },
+      { domain: 'IAM', q: 'Que signifie SSO dans un contexte IAM ?', a: ['Un antivirus installé sur chaque serveur.', 'Une connexion unique pouvant centraliser l’authentification.', 'Un stockage sans sauvegarde opérationnelle.'], correct: 1 },
+      { domain: 'IAM', q: 'Quel signal doit déclencher rapidement une révocation d’accès ?', a: ['Un changement de fond d’écran.', 'Un départ ou changement de poste validé RH/manager.', 'Une préférence pour un autre navigateur.'], correct: 1 },
+      { domain: 'IAM', q: 'Pourquoi séparer les tâches sensibles ?', a: ['Pour multiplier les tickets inutiles.', 'Pour limiter fraude et erreur en évitant un pouvoir excessif seul.', 'Pour supprimer tout besoin de supervision.'], correct: 1 },
+      { domain: 'IAM', q: 'Quel est le rôle d’un fournisseur d’identité ?', a: ['Produire des câbles réseau.', 'Centraliser et fédérer des authentifications.', 'Effacer automatiquement tous les journaux.'], correct: 1 },
+
+      { domain: 'GRC', q: 'Que représente un risque cyber ?', a: ['Une liste de logiciels préférés.', 'La combinaison vraisemblance, menace, vulnérabilité et impact.', 'Uniquement le coût d’un pare-feu.'], correct: 1 },
+      { domain: 'GRC', q: 'Quel est l’objectif d’une politique de sécurité ?', a: ['Créer un document jamais relu.', 'Définir les règles, responsabilités et exigences de protection.', 'Remplacer les contrôles techniques.'], correct: 1 },
+      { domain: 'GRC', q: 'À quoi sert un plan de traitement des risques ?', a: ['Ignorer les risques acceptés.', 'Choisir et suivre réduction, transfert, acceptation ou évitement.', 'Noter uniquement les risques faibles.'], correct: 1 },
+      { domain: 'GRC', q: 'Que mesure un indicateur KRI ?', a: ['Le nombre de cafés consommés.', 'Un niveau d’exposition ou de dérive du risque.', 'La beauté d’un tableau de bord.'], correct: 1 },
+      { domain: 'GRC', q: 'Pourquoi gérer les tiers ?', a: ['Parce que seuls les fournisseurs sont vulnérables.', 'Pour évaluer et encadrer les risques introduits par prestataires.', 'Pour éviter tout contrat écrit.'], correct: 1 },
+      { domain: 'GRC', q: 'Que doit contenir un registre de traitements RGPD ?', a: ['Les mots de passe des clients.', 'Des informations sur finalités, données, acteurs et durées.', 'Uniquement les noms des commerciaux.'], correct: 1 },
+      { domain: 'GRC', q: 'Quel livrable aide à démontrer la conformité ?', a: ['Une promesse orale.', 'Des preuves de contrôles, audits et plans d’action suivis.', 'Un logo de certification inventé.'], correct: 1 },
+
+      { domain: 'SOC', q: 'Quelle est la mission principale d’un SOC ?', a: ['Concevoir les affiches marketing.', 'Surveiller, détecter, qualifier et contribuer à répondre aux incidents.', 'Débrancher Internet chaque soir.'], correct: 1 },
+      { domain: 'SOC', q: 'À quoi sert un SIEM ?', a: ['Cuire les sauvegardes à froid.', 'Collecter, corréler et analyser des événements de sécurité.', 'Remplacer tous les analystes sans paramétrage.'], correct: 1 },
+      { domain: 'SOC', q: 'Qu’est-ce qu’un faux positif ?', a: ['Une alerte malveillante confirmée.', 'Une alerte qui semble suspecte mais n’est pas une menace réelle.', 'Un incident jamais journalisé.'], correct: 1 },
+      { domain: 'SOC', q: 'Pourquoi qualifier la criticité d’une alerte ?', a: ['Pour choisir une couleur au hasard.', 'Pour prioriser la réponse selon impact et vraisemblance.', 'Pour supprimer les journaux détaillés.'], correct: 1 },
+      { domain: 'SOC', q: 'Que contient souvent un playbook incident ?', a: ['Des recettes de cuisine.', 'Des étapes de triage, containment, éradication et communication.', 'Uniquement le numéro du PDG.'], correct: 1 },
+      { domain: 'SOC', q: 'Quel artefact est utile pour la détection ?', a: ['Une rumeur non vérifiée.', 'Un indicateur de compromission comme IP, hash ou domaine.', 'La météo locale.'], correct: 1 },
+      { domain: 'SOC', q: 'Pourquoi conserver les journaux ?', a: ['Pour remplir les disques sans intérêt.', 'Pour investigation, détection, conformité et traçabilité.', 'Pour éviter les sauvegardes.'], correct: 1 },
+      { domain: 'SOC', q: 'Qu’est-ce que le containment ?', a: ['Accélérer la propagation.', 'Limiter l’étendue d’un incident avant remédiation complète.', 'Publier l’incident avant analyse.'], correct: 1 },
+
+      { domain: 'Sécurité IA', q: 'Qu’est-ce qu’une attaque par prompt injection ?', a: ['Une panne électrique du clavier.', 'Une tentative de détourner les instructions ou le contexte du modèle.', 'Une simple faute d’orthographe dans le prompt.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Comment réduire le risque de fuite de données dans un outil IA ?', a: ['Copier toutes les données sensibles sans contrôle.', 'Classifier, minimiser et encadrer les données envoyées au modèle.', 'Désactiver tous les journaux de sécurité.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Pourquoi valider les sorties d’un modèle IA ?', a: ['Parce qu’elles sont toujours fausses.', 'Car elles peuvent contenir erreurs, hallucinations ou contenus risqués.', 'Pour empêcher le modèle de répondre.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Quel contrôle protège une application IA connectée à des outils ?', a: ['Laisser le modèle exécuter toute action.', 'Limiter les permissions, confirmer les actions sensibles et journaliser.', 'Masquer le bouton de déconnexion.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Que désigne l’empoisonnement de données ?', a: ['Ajouter du sel dans un datacenter.', 'Altérer les données d’entraînement ou de référence pour biaiser le système.', 'Compresser un fichier modèle.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Pourquoi surveiller les usages IA en entreprise ?', a: ['Pour interdire toute innovation.', 'Pour détecter abus, données sensibles, coûts et comportements anormaux.', 'Uniquement pour compter les clics.'], correct: 1 },
+      { domain: 'Sécurité IA', q: 'Quel est un bon réflexe face à une réponse IA juridique ou sécurité ?', a: ['L’appliquer sans relecture.', 'La faire vérifier par une source fiable ou un expert selon l’enjeu.', 'La publier automatiquement sur Internet.'], correct: 1 }
+    ];
+
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const fireworksCanvas = document.getElementById('fireworks');
+    const fireworksCtx = fireworksCanvas.getContext('2d');
+    const size = 20;
+    const cells = canvas.width / size;
+    const maxQuestions = 10;
+    const state = { snake: [], direction: { x: 1, y: 0 }, nextDirection: { x: 1, y: 0 }, food: null, running: false, paused: false, selected: [], current: 0, score: 0, interval: null };
+    const fireworks = { particles: [], animation: null };
+
+    const $ = (id) => document.getElementById(id);
+    const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
+
+    function resetGame() {
+      state.snake = [{ x: 8, y: 15 }, { x: 7, y: 15 }, { x: 6, y: 15 }];
+      state.direction = { x: 1, y: 0 };
+      state.nextDirection = { x: 1, y: 0 };
+      state.selected = shuffle(QUESTIONS).slice(0, maxQuestions);
+      state.current = 0;
+      state.score = 0;
+      state.running = false;
+      state.paused = false;
+      placeFood();
+      updateHud('Prêt');
+      draw();
+    }
+
+    function startGame() {
+      if (state.running) return;
+      state.running = true;
+      updateHud('En cours');
+      clearInterval(state.interval);
+      state.interval = setInterval(tick, 115);
+    }
+
+    function placeFood() {
+      do {
+        state.food = { x: Math.floor(Math.random() * cells), y: Math.floor(Math.random() * cells) };
+      } while (state.snake.some(part => part.x === state.food.x && part.y === state.food.y));
+    }
+
+    function tick() {
+      if (!state.running || state.paused) return;
+      state.direction = state.nextDirection;
+      const head = { x: state.snake[0].x + state.direction.x, y: state.snake[0].y + state.direction.y };
+
+      if (head.x < 0 || head.y < 0 || head.x >= cells || head.y >= cells || state.snake.some(part => part.x === head.x && part.y === head.y)) {
+        endGame(false);
+        return;
+      }
+
+      state.snake.unshift(head);
+      if (head.x === state.food.x && head.y === state.food.y) {
+        state.paused = true;
+        updateHud('Question');
+        askQuestion();
+      } else {
+        state.snake.pop();
+      }
+      draw();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#07111f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,.035)';
+      for (let i = 0; i <= cells; i++) {
+        ctx.beginPath(); ctx.moveTo(i * size, 0); ctx.lineTo(i * size, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * size); ctx.lineTo(canvas.width, i * size); ctx.stroke();
+      }
+      ctx.fillStyle = '#ffd166';
+      roundRect(state.food.x * size + 2, state.food.y * size + 2, size - 4, size - 4, 5);
+      state.snake.forEach((part, index) => {
+        ctx.fillStyle = index === 0 ? '#55b8ff' : '#38f2af';
+        roundRect(part.x * size + 2, part.y * size + 2, size - 4, size - 4, 6);
+      });
+    }
+
+    function roundRect(x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, radius);
+      ctx.fill();
+    }
+
+    function askQuestion() {
+      const question = state.selected[state.current];
+      $('question-domain').textContent = question.domain;
+      $('question-text').textContent = question.q;
+      $('feedback').textContent = '';
+      $('domain').textContent = question.domain;
+      const answers = $('answers');
+      answers.innerHTML = '';
+      question.a.forEach((answer, index) => {
+        const button = document.createElement('button');
+        button.className = 'answer';
+        button.textContent = answer;
+        button.addEventListener('click', () => answerQuestion(index, button));
+        answers.appendChild(button);
+      });
+      $('quiz-modal').classList.add('visible');
+    }
+
+    function answerQuestion(index, selectedButton) {
+      const question = state.selected[state.current];
+      [...document.querySelectorAll('.answer')].forEach((button, answerIndex) => {
+        button.disabled = true;
+        if (answerIndex === question.correct) button.classList.add('correct');
+      });
+      if (index === question.correct) {
+        state.score++;
+        $('feedback').textContent = 'Bonne réponse ! Reprise du serpent...';
+        launchFireworks();
+      } else {
+        selectedButton.classList.add('wrong');
+        $('feedback').textContent = 'Réponse incorrecte. La bonne réponse est mise en évidence.';
+      }
+      state.current++;
+      updateHud('Reprise');
+      setTimeout(() => {
+        $('quiz-modal').classList.remove('visible');
+        if (state.current >= maxQuestions) endGame(true);
+        else { placeFood(); state.paused = false; updateHud('En cours'); }
+      }, 1200);
+    }
+
+    function endGame(completed) {
+      clearInterval(state.interval);
+      state.running = false;
+      state.paused = true;
+      updateHud(completed ? 'Terminé' : 'Collision');
+      const passed = state.score > 8;
+      $('result-title').textContent = passed ? 'Compétences validées' : 'Challenge à retravailler';
+      $('result-title').className = `result-title ${passed ? 'validated' : 'not-validated'}`;
+      $('result-detail').textContent = completed
+        ? `Score final : ${state.score}/10 bonnes réponses.`
+        : `Le serpent a heurté un obstacle. Score quiz actuel : ${state.score}/${state.current}. Recommencez pour tenter les 10 questions.`;
+      $('result-modal').classList.add('visible');
+    }
+
+    function updateHud(status) {
+      $('status').textContent = status;
+      $('eaten').textContent = `${state.current}/${maxQuestions}`;
+      $('score').textContent = state.score;
+      $('question-count').textContent = `${state.current}/${maxQuestions}`;
+      if (!state.selected[state.current]) $('domain').textContent = '—';
+    }
+
+    function changeDirection(x, y) {
+      if (state.direction.x + x === 0 && state.direction.y + y === 0) return;
+      state.nextDirection = { x, y };
+    }
+
+    function resizeFireworksCanvas() {
+      fireworksCanvas.width = window.innerWidth * window.devicePixelRatio;
+      fireworksCanvas.height = window.innerHeight * window.devicePixelRatio;
+      fireworksCanvas.style.width = `${window.innerWidth}px`;
+      fireworksCanvas.style.height = `${window.innerHeight}px`;
+      fireworksCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    }
+
+    function launchFireworks() {
+      const answerBox = $('answers').getBoundingClientRect();
+      const origins = [
+        { x: answerBox.left + answerBox.width * 0.24, y: answerBox.top + answerBox.height * 0.5 },
+        { x: answerBox.left + answerBox.width * 0.50, y: answerBox.top + answerBox.height * 0.4 },
+        { x: answerBox.left + answerBox.width * 0.76, y: answerBox.top + answerBox.height * 0.5 }
+      ];
+      origins.forEach((origin, burstIndex) => createBurst(origin.x, origin.y, burstIndex));
+      if (!fireworks.animation) animateFireworks();
+    }
+
+    function createBurst(x, y, burstIndex) {
+      const colors = ['#38f2af', '#55b8ff', '#ffd166', '#ff7ad9', '#ffffff'];
+      for (let i = 0; i < 42; i++) {
+        const angle = (Math.PI * 2 * i) / 42 + Math.random() * 0.18;
+        const speed = 2.2 + Math.random() * 4.8 + burstIndex * 0.35;
+        fireworks.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: 2 + Math.random() * 3,
+          alpha: 1,
+          life: 54 + Math.random() * 18,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        });
+      }
+    }
+
+    function animateFireworks() {
+      fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      fireworks.particles = fireworks.particles.filter((particle) => particle.life > 0 && particle.alpha > 0.02);
+
+      fireworks.particles.forEach((particle) => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.06;
+        particle.vx *= 0.985;
+        particle.vy *= 0.985;
+        particle.life--;
+        particle.alpha = particle.life / 72;
+
+        fireworksCtx.save();
+        fireworksCtx.globalAlpha = Math.max(particle.alpha, 0);
+        fireworksCtx.fillStyle = particle.color;
+        fireworksCtx.shadowBlur = 18;
+        fireworksCtx.shadowColor = particle.color;
+        fireworksCtx.beginPath();
+        fireworksCtx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        fireworksCtx.fill();
+        fireworksCtx.restore();
+      });
+
+      if (fireworks.particles.length) {
+        fireworks.animation = requestAnimationFrame(animateFireworks);
+      } else {
+        fireworks.animation = null;
+        fireworksCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (['arrowup', 'z', 'w'].includes(key)) changeDirection(0, -1);
+      if (['arrowdown', 's'].includes(key)) changeDirection(0, 1);
+      if (['arrowleft', 'q', 'a'].includes(key)) changeDirection(-1, 0);
+      if (['arrowright', 'd'].includes(key)) changeDirection(1, 0);
+      if (key === ' ') startGame();
+    });
+
+    $('start').addEventListener('click', startGame);
+    $('restart').addEventListener('click', resetGame);
+    $('play-again').addEventListener('click', () => { $('result-modal').classList.remove('visible'); resetGame(); startGame(); });
+    window.addEventListener('resize', resizeFireworksCanvas);
+
+    resizeFireworksCanvas();
+    resetGame();
+  </script>
+</body>
+</html>
